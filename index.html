@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake Game</title>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #333; }
+    canvas { border: 1px solid black; }
+    .controls { margin-top: 20px; }
+    #toggleButton { background-color: #008CBA; color: white; padding: 10px; border: none; cursor: pointer; }
+    #muteButton { background-color: green; color: white; padding: 10px; border: none; cursor: grab ; margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="controls">
+    <button id="toggleButton">ON AUTO</button>
+    <input type="range" id="frameRateSlider" min="1" max="60" value="10">
+    <label for="frameRateSlider">Frame Rate</label>
+    <button id="muteButton">MUTE</button>
+  </div>
+  <audio id="biteSound" src="./Snakebite.mp3" preload="auto"></audio>
+  <script src="game.js"></script>
+</body>
+</html>
