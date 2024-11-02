@@ -1,26 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Snake Game</title>
-  <style>
-    body { margin: 0; display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #333; }
-    canvas { border: 1px solid black; }
-    .controls { margin-top: 20px; }
-    #toggleButton { background-color: #008CBA; color: white; padding: 10px; border: none; cursor: pointer; }
-    #muteButton { background-color: green; color: white; padding: 10px; border: none; cursor: grab ; margin-left: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(to right, rgb(81, 222, 222), rgb(255, 255, 255));
+
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #gameContainer {
+            margin-top: 50px; /* Move the canvas down */
+            position: relative;
+            background: linear-gradient(to right, rgb(43, 126, 126), rgb(255, 255, 255));
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        canvas {
+            border: 4px solid gold;
+            border-radius: 10px;
+            background-color: #e0e0e0; /* Canvas background */
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(to right, rgb(15, 97, 97), rgb(255, 255, 255));
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .buttonRow {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        button {
+            margin: 0 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            background-color: #008CBA;
+            color: white;
+        }
+        button:hover {
+            background-color: #005f6b;
+        }
+        #frameRateContainer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #frameRateSlider {
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
-  <div class="controls">
-    <button id="toggleButton">ON AUTO</button>
-    <input type="range" id="frameRateSlider" min="1" max="60" value="10">
-    <label for="frameRateSlider">Frame Rate</label>
-    <button id="muteButton">MUTE</button>
-  </div>
-  <audio id="biteSound" src="./Snakebite.mp3" preload="auto"></audio>
-  <script src="game.js"></script>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+    <div class="controls">
+        <div class="buttonRow">
+            <button id="toggleButton">AUTO OFF</button>
+            <button id="muteButton">MUTE</button>
+        </div>
+        <div id="frameRateContainer">
+            <span>Frame Rate: </span>
+            <input type="range" id="frameRateSlider" min="1" max="50" value="10">
+        </div>
+        <div class="buttonRow">
+            <button id="upButton">↑</button>
+            <div>
+                <button id="leftButton">←</button>
+                <button id="rightButton">→</button>
+            </div>
+            <button id="downButton">↓</button>
+        </div>
+    </div>
+    <audio id="biteSound" src="bite.mp3" preload="auto"></audio>
+
+    <script>
+        let score = 0;
+        let foodEaten = true;
+        let headX = 200;
+        let headY = 200;
+        let headDir = 0;
+        const size = 20;
+        const headSpeed = size;
+        let foodX;
+        let foodY;
+        let tail = [];
+        let isOn = true;
+        let frameRate = 10;
+        let isMut = false;
+
+        const canvas = document.getElementById('gameCanvas');
+        const context = canvas.getContext('2d');
+        const toggleButton = document.getElementById('toggleButton');
+        const muteTog = document.getElementById('muteButton');
+        const frameRateSlider = document.getElementById('frameRateSlider');
+        const biteSound = document.getElementById('biteSound');
+
+        toggleButton.addEventListener('click', toggleAuto);
+        muteTog.addEventListener('click', togMut);
+        frameRateSlider.addEventListener('input', adjustFrameRate);
+        document.addEventListener('keydown', keyPressed);
+        
+        // Direction buttons
+        document.getElementById('upButton').addEventListener('click', () => changeDirection(3));
+        document.getElementById('downButton').addEventListener('click', () => changeDirection(1));
+        document.getElementById('leftButton').addEventListener('click', () => changeDirection(2));
+        document.getElementById('rightButton').addEventListener('click', () => changeDirection(0));
+
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = 'rgba(90,90,90,0.8)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            tailF();
+            head();
+            food();
+            if (isOn) {
+                auto();
+            }
+            context.textAlign = 'center';
+            context.fillStyle = 'white';
+            context.font = '20px Arial';
+            context.fillText(`Score: ${score}`, canvas.width / 2, 30);
+            setTimeout(() => {
+                requestAnimationFrame(draw);
+            }, 1000 / frameRate);
+        }
+
+        function tailF() {
+            if (tail.length != 0) {
+                for (let t = tail.length - 1; t > 0; t--) {
+                    tail[t].x = tail[t - 1].x;
+                    tail[t].y = tail[t - 1].y;
+                }
+                tail[0].x = headX;
+                tail[0].y = headY;
+            }
+
+            for (let t of tail) {
+                context.fillStyle = 'rgb(0, 220, 0)';
+                context.beginPath();
+                context.arc(t.x + size / 2, t.y + size / 2, size / 2, 0, Math.PI * 2);
+                context.fill();
+                context.strokeStyle = 'black';
+                context.lineWidth = 2;
+                context.stroke();
+            }
+        }
+
+        function food() {
+            if (foodEaten) {
+                foodX = Math.floor(Math.random() * (canvas.width / size)) * size;
+                foodY = Math.floor(Math.random() * (canvas.height / size)) * size;
+                foodEaten = false;
+            }
+            if (headX === foodX && headY === foodY) {
+                if (!isMut) {
+                    biteSound.play();
+                }
+                tail.push({ x: headX, y: headY });
+                score++;
+                foodEaten = true;
+            }
+            context.fillStyle = 'rgb(220, 225, 0)';
+            context.beginPath();
+            context.arc(foodX + size / 2, foodY + size / 2, size / 2, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        function head() {
+            context.fillStyle = 'rgb(0, 220, 0)';
+            context.beginPath();
+            context.arc(headX + size / 2, headY + size / 2, size / 2, 0, Math.PI * 2);
+            context.fill();
+
+            context.save();
+            context.translate(headX + size / 2, headY + size / 2);
+            context.rotate((headDir - 1) * (Math.PI / 2));
+            context.translate(-headX - size / 2, -headY - size / 2);
+            context.fillStyle = 'rgb(220, 0, 0)';
+            context.beginPath();
+            context.arc(headX + size / 4, headY + size / 4, 2, 0, Math.PI * 2);
+            context.arc(headX + (3 * size) / 4, headY + size / 4, 2, 0, Math.PI * 2);
+            context.fill();
+            context.beginPath();
+            context.arc(headX + size / 2, headY + size / 2 + size / 4, size / 2, 0, Math.PI * 2);
+            context.fill();
+            context.restore();
+
+            // Update head position
+            if (headDir === 0) {
+                headX += headSpeed;
+            } else if (headDir === 1) {
+                headY += headSpeed;
+            } else if (headDir === 2) {
+                headX -= headSpeed;
+            } else if (headDir === 3) {
+                headY -= headSpeed;
+            }
+            headX = Math.max(0, Math.min(canvas.width - size, headX));
+            headY = Math.max(0, Math.min(canvas.height - size, headY));
+        }
+
+        function auto() {
+            if (headX > foodX) {
+                headDir = 2;
+            } else if (headX < foodX) {
+                headDir = 0;
+            }
+            if (headX === foodX && headY > foodY) {
+                headDir = 3;
+            } else if (headX === foodX && headY < foodY) {
+                headDir = 1;
+            }
+        }
+
+        function keyPressed(event) {
+            if (event.key === 'ArrowRight') {
+                changeDirection(0);
+            } else if (event.key === 'ArrowDown') {
+                changeDirection(1);
+            } else if (event.key === 'ArrowLeft') {
+                changeDirection(2);
+            } else if (event.key === 'ArrowUp') {
+                changeDirection(3);
+            }
+        }
+
+        function changeDirection(dir) {
+            // Prevent the snake from going back on itself
+            if (Math.abs(headDir - dir) !== 2) {
+                headDir = dir;
+            }
+        }
+
+        function toggleAuto() {
+            isOn = !isOn;
+            toggleButton.textContent = isOn ? "AUTO ON" : "AUTO OFF";
+        }
+
+        function togMut() {
+            isMut = !isMut;
+            muteTog.textContent = isMut ? "UNMUTE" : "MUTE";
+        }
+
+        function adjustFrameRate() {
+            frameRate = frameRateSlider.value;
+        }
+
+        // Initialize the game
+        function init() {
+            tail.push({ x: headX, y: headY });
+            draw();
+        }
+
+        init();
+    </script>
 </body>
 </html>
